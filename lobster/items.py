@@ -32,9 +32,9 @@ class Tracing_Tag:
         assert not isinstance(version, str) or version != "None"
 
         self.namespace = namespace
-        self.tag       = tag
-        self.version   = version
-        self.hash_val  = None
+        self.tag = tag
+        self.version = version
+        self.hash_val = None
 
     def __str__(self):
         rv = "%s %s" % (self.namespace,
@@ -63,7 +63,7 @@ class Tracing_Tag:
         if "@" in text:
             tag, version = text.split("@", 1)
         else:
-            tag     = text
+            tag = text
             version = None
         return Tracing_Tag(namespace, tag, version)
 
@@ -76,11 +76,11 @@ class Tracing_Tag:
 
 
 class Tracing_Status(Enum):
-    OK        = auto()
-    PARTIAL   = auto()
-    MISSING   = auto()
+    OK = auto()
+    PARTIAL = auto()
+    MISSING = auto()
     JUSTIFIED = auto()
-    ERROR     = auto()
+    ERROR = auto()
 
 
 class Item(metaclass=ABCMeta):
@@ -88,24 +88,24 @@ class Item(metaclass=ABCMeta):
         assert isinstance(tag, Tracing_Tag)
         assert isinstance(location, Location)
 
-        self.level     = None
-        self.tag       = tag
-        self.location  = location
-        self.name      = tag.tag
+        self.level = None
+        self.tag = tag
+        self.location = location
+        self.name = tag.tag
 
-        self.ref_up   = []
+        self.ref_up = []
         self.ref_down = []
 
         self.unresolved_references_cache = set()
         self.unresolved_references = []
 
-        self.messages    = []
-        self.just_up     = []
-        self.just_down   = []
+        self.messages = []
+        self.just_up = []
+        self.just_down = []
         self.just_global = []
 
         self.tracing_status = None
-        self.has_error      = False
+        self.has_error = False
 
     def set_level(self, level):
         assert isinstance(level, str)
@@ -133,9 +133,9 @@ class Item(metaclass=ABCMeta):
 
         level = config[self.level]
 
-        has_up_ref      = len(self.ref_up) > 0
-        has_just_up     = len(self.just_up) > 0 or len(self.just_global) > 0
-        has_just_down   = len(self.just_down) > 0 or len(self.just_global) > 0
+        has_up_ref = len(self.ref_up) > 0
+        has_just_up = len(self.just_up) > 0 or len(self.just_global) > 0
+        has_just_down = len(self.just_down) > 0 or len(self.just_global) > 0
         has_init_errors = len(self.messages) > 0
 
         # Check up references
@@ -148,14 +148,14 @@ class Item(metaclass=ABCMeta):
         # Check set of down references
         ok_down = True
         if level["needs_tracing_down"]:
-            has_trace = {name : False
+            has_trace = {name: False
                          for name in config
                          if self.level in config[name]["traces"]}
             for ref in self.ref_down:
                 has_trace[stab[ref.key()].level] = True
             for chain in level["breakdown_requirements"]:
                 if not any(has_trace[src] for src in chain) and \
-                   not has_just_down:
+                        not has_just_down:
                     ok_down = False
                     self.messages.append("missing reference to %s" %
                                          " or ".join(sorted(chain)))
@@ -169,8 +169,8 @@ class Item(metaclass=ABCMeta):
             else:
                 self.tracing_status = Tracing_Status.OK
         elif (ok_up or ok_down) and \
-             level["needs_tracing_up"] and \
-             level["needs_tracing_down"]:
+                level["needs_tracing_up"] and \
+                level["needs_tracing_down"]:
             self.tracing_status = Tracing_Status.PARTIAL
         else:
             self.tracing_status = Tracing_Status.MISSING
@@ -192,7 +192,7 @@ class Item(metaclass=ABCMeta):
         self.ref_down = [Tracing_Tag.from_json(ref)
                          for ref in data.get("ref_down", [])]
         self.messages = data.get("messages", [])
-        self.just_up  = data.get("just_up", [])
+        self.just_up = data.get("just_up", [])
         self.just_down = data.get("just_down", [])
         self.just_global = data.get("just_global", [])
         if "tracing_status" in data:
@@ -200,19 +200,19 @@ class Item(metaclass=ABCMeta):
 
     def to_json(self):
         rv = {
-            "tag"         : self.tag.to_json(),
-            "location"    : self.location.to_json(),
-            "name"        : self.name,
-            "messages"    : self.messages,
-            "just_up"     : self.just_up,
-            "just_down"   : self.just_down,
-            "just_global" : self.just_global,
+            "tag": self.tag.to_json(),
+            "location": self.location.to_json(),
+            "name": self.name,
+            "messages": self.messages,
+            "just_up": self.just_up,
+            "just_down": self.just_down,
+            "just_global": self.just_global,
         }
         if self.unresolved_references:
             rv["refs"] = [tag.to_json()
                           for tag in self.unresolved_references]
         if self.ref_up or self.ref_down:
-            rv["ref_up"]   = [tag.to_json() for tag in self.ref_up]
+            rv["ref_up"] = [tag.to_json() for tag in self.ref_up]
             rv["ref_down"] = [tag.to_json() for tag in self.ref_down]
         if self.tracing_status:
             rv["tracing_status"] = self.tracing_status.name
@@ -230,17 +230,17 @@ class Requirement(Item):
         assert isinstance(status, str) or status is None
 
         self.framework = framework
-        self.kind      = kind
-        self.name      = name
-        self.text      = text
-        self.status    = status
+        self.kind = kind
+        self.name = name
+        self.text = text
+        self.status = status
 
     def to_json(self):
         rv = super().to_json()
         rv["framework"] = self.framework
-        rv["kind"]      = self.kind
-        rv["text"]      = self.text
-        rv["status"]    = self.status
+        rv["kind"] = self.kind
+        rv["text"] = self.text
+        rv["status"] = self.status
         return rv
 
     def perform_source_checks(self, source_info):
@@ -257,13 +257,13 @@ class Requirement(Item):
         assert isinstance(data, dict)
         assert schema_version in (3, 4)
 
-        item = Requirement(tag       = Tracing_Tag.from_json(data["tag"]),
-                           location  = Location.from_json(data["location"]),
-                           framework = data["framework"],
-                           kind      = data["kind"],
-                           name      = data["name"],
-                           text      = data.get("text", None),
-                           status    = data.get("status", None))
+        item = Requirement(tag=Tracing_Tag.from_json(data["tag"]),
+                           location=Location.from_json(data["location"]),
+                           framework=data["framework"],
+                           kind=data["kind"],
+                           name=data["name"],
+                           text=data.get("text", None),
+                           status=data.get("status", None))
         item.additional_data_from_json(level, data, schema_version)
 
         return item
@@ -277,13 +277,13 @@ class Implementation(Item):
         assert isinstance(name, str)
 
         self.language = language
-        self.kind     = kind
-        self.name     = name
+        self.kind = kind
+        self.name = name
 
     def to_json(self):
         rv = super().to_json()
         rv["language"] = self.language
-        rv["kind"]     = self.kind
+        rv["kind"] = self.kind
         return rv
 
     @classmethod
@@ -292,11 +292,11 @@ class Implementation(Item):
         assert isinstance(data, dict)
         assert schema_version == 3
 
-        item = Implementation(tag      = Tracing_Tag.from_json(data["tag"]),
-                              location = Location.from_json(data["location"]),
-                              language = data["language"],
-                              kind     = data["kind"],
-                              name     = data["name"])
+        item = Implementation(tag=Tracing_Tag.from_json(data["tag"]),
+                              location=Location.from_json(data["location"]),
+                              language=data["language"],
+                              kind=data["kind"],
+                              name=data["name"])
         item.additional_data_from_json(level, data, schema_version)
 
         return item
@@ -310,14 +310,14 @@ class Activity(Item):
         assert isinstance(status, str) or status is None
 
         self.framework = framework
-        self.kind      = kind
-        self.status    = status
+        self.kind = kind
+        self.status = status
 
     def to_json(self):
         rv = super().to_json()
         rv["framework"] = self.framework
-        rv["kind"]      = self.kind
-        rv["status"]    = self.status
+        rv["kind"] = self.kind
+        rv["status"] = self.status
         return rv
 
     @classmethod
@@ -326,11 +326,11 @@ class Activity(Item):
         assert isinstance(data, dict)
         assert schema_version == 3
 
-        item = Activity(tag       = Tracing_Tag.from_json(data["tag"]),
-                        location  = Location.from_json(data["location"]),
-                        framework = data["framework"],
-                        kind      = data["kind"],
-                        status    = data.get("status", None))
+        item = Activity(tag=Tracing_Tag.from_json(data["tag"]),
+                        location=Location.from_json(data["location"]),
+                        framework=data["framework"],
+                        kind=data["kind"],
+                        status=data.get("status", None))
         item.additional_data_from_json(level, data, schema_version)
 
         return item

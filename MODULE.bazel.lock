@@ -1,11 +1,13 @@
 {
   "lockFileVersion": 6,
-  "moduleFileHash": "17773be502f3bf77bd89d0406f30ecfc85e297ff3118744ba5be3b6618c35ce2",
+  "moduleFileHash": "261a5a25673ffe79a2b8e40eff1aff3fcf7e8afe500b9164f63efbb59a782e85",
   "flags": {
     "cmdRegistries": [
       "https://bcr.bazel.build/"
     ],
-    "cmdModuleOverrides": {},
+    "cmdModuleOverrides": {
+      "trlc": "/home/jan/00_workspace/01_dependix/trlc"
+    },
     "allowedYankedVersions": [],
     "envVarAllowedYankedVersions": "",
     "ignoreDevDependency": false,
@@ -13,7 +15,8 @@
     "compatibilityMode": "ERROR"
   },
   "localOverrideHashes": {
-    "bazel_tools": "1ae69322ac3823527337acf02016e8ee95813d8d356f47060255b8956fa642f0"
+    "bazel_tools": "1ae69322ac3823527337acf02016e8ee95813d8d356f47060255b8956fa642f0",
+    "trlc": "d1aa03ce3bc4998f68ee9b5fa371dfa11e9d9045cc027a323cf921effb6fd544"
   },
   "moduleDepGraph": {
     "<root>": {
@@ -286,7 +289,9 @@
             "column": 0
           },
           "imports": {
-            "cvc5": "cvc5"
+            "cvc5_linux": "cvc5_linux",
+            "cvc5_mac": "cvc5_mac",
+            "cvc5_windows": "cvc5_windows"
           },
           "devImports": [],
           "tags": [
@@ -297,12 +302,44 @@
                 "sha256": "cf291aef67da8eaa8d425a51f67f3f72f36db8b1040655dc799b64e3d69e6086",
                 "strip_prefix": "cvc5-Linux-static",
                 "url": "https://github.com/cvc5/cvc5/releases/download/cvc5-1.1.2/cvc5-Linux-static.zip",
-                "name": "cvc5"
+                "name": "cvc5_linux"
               },
               "devDependency": false,
               "location": {
                 "file": "@@trlc~//:MODULE.bazel",
                 "line": 33,
+                "column": 13
+              }
+            },
+            {
+              "tagName": "@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+              "attributeValues": {
+                "build_file": "@trlc//:cvc5.BUILD",
+                "sha256": "561a5ee82416441fa616c6f416ecaae2fa2dfc06dc81c2c6cc8dcfb31936e326",
+                "strip_prefix": "cvc5-macOS-static",
+                "url": "https://github.com/cvc5/cvc5/releases/download/cvc5-1.1.2/cvc5-macOS-static.zip",
+                "name": "cvc5_mac"
+              },
+              "devDependency": false,
+              "location": {
+                "file": "@@trlc~//:MODULE.bazel",
+                "line": 41,
+                "column": 13
+              }
+            },
+            {
+              "tagName": "@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+              "attributeValues": {
+                "build_file": "@trlc//:cvc5.BUILD",
+                "sha256": "f06715b796020c810b2713e6df3969dae99d38c24d2a6eac225a029fc70fe1ee",
+                "strip_prefix": "cvc5-Win64-static",
+                "url": "https://github.com/cvc5/cvc5/releases/download/cvc5-1.1.2/cvc5-Win64-static.zip",
+                "name": "cvc5_windows"
+              },
+              "devDependency": false,
+              "location": {
+                "file": "@@trlc~//:MODULE.bazel",
+                "line": 49,
                 "column": 13
               }
             }
@@ -1856,40 +1893,16 @@
       "os:linux,arch:amd64": {
         "bzlTransitiveDigest": "0gZJEM7jEV2MrLCzKZVk0IIzCKChDWnMpbekGUC2Udc=",
         "recordedFileInputs": {
-          "@@trlc~//requirements.txt": "ee9982027803b9b2c099109c168ed751cf56dd89c18ea974c5a5fe1282694b7a"
+          "@@trlc~//requirements.txt": "e0808b352560a9317b342b353e02a42ab6578a0e4050334c5b0928054d14c7da"
         },
         "recordedDirentsInputs": {},
         "envVariables": {},
         "generatedRepoSpecs": {
-          "trlc_dependencies_311_coverage": {
+          "trlc_dependencies_311_cvc5": {
             "bzlFile": "@@rules_python~//python/pip_install:pip_repository.bzl",
             "ruleClassName": "whl_library",
             "attributes": {
-              "requirement": "coverage>=7.2",
-              "repo": "trlc_dependencies_311",
-              "repo_prefix": "trlc_dependencies_311_",
-              "whl_patches": {},
-              "experimental_target_platforms": [],
-              "python_interpreter": "",
-              "python_interpreter_target": "@@rules_python~~python~python_3_11_host//:python",
-              "quiet": true,
-              "timeout": 600,
-              "isolated": true,
-              "extra_pip_args": [],
-              "download_only": false,
-              "pip_data_exclude": [],
-              "enable_implicit_namespace_pkgs": false,
-              "environment": {},
-              "envsubst": [],
-              "group_name": "",
-              "group_deps": []
-            }
-          },
-          "trlc_dependencies_311_sphinx": {
-            "bzlFile": "@@rules_python~//python/pip_install:pip_repository.bzl",
-            "ruleClassName": "whl_library",
-            "attributes": {
-              "requirement": "sphinx>=7.0",
+              "requirement": "cvc5>=1.1.1; sys.platform == \"linux\" or sys.platform == \"darwin\"",
               "repo": "trlc_dependencies_311",
               "repo_prefix": "trlc_dependencies_311_",
               "whl_patches": {},
@@ -1915,19 +1928,10 @@
             "attributes": {
               "repo_name": "trlc_dependencies",
               "whl_map": {
-                "coverage": [
-                  "3.11"
-                ],
-                "pycodestyle": [
-                  "3.11"
-                ],
-                "pylint": [
+                "cvc5": [
                   "3.11"
                 ],
                 "pyvcg": [
-                  "3.11"
-                ],
-                "sphinx": [
                   "3.11"
                 ]
               },
@@ -1958,60 +1962,12 @@
               "group_deps": []
             }
           },
-          "trlc_dependencies_311_pycodestyle": {
-            "bzlFile": "@@rules_python~//python/pip_install:pip_repository.bzl",
-            "ruleClassName": "whl_library",
-            "attributes": {
-              "requirement": "pycodestyle>=2.10",
-              "repo": "trlc_dependencies_311",
-              "repo_prefix": "trlc_dependencies_311_",
-              "whl_patches": {},
-              "experimental_target_platforms": [],
-              "python_interpreter": "",
-              "python_interpreter_target": "@@rules_python~~python~python_3_11_host//:python",
-              "quiet": true,
-              "timeout": 600,
-              "isolated": true,
-              "extra_pip_args": [],
-              "download_only": false,
-              "pip_data_exclude": [],
-              "enable_implicit_namespace_pkgs": false,
-              "environment": {},
-              "envsubst": [],
-              "group_name": "",
-              "group_deps": []
-            }
-          },
           "trlc_dependencies_311__groups": {
             "bzlFile": "@@rules_python~//python/pip_install:pip_repository.bzl",
             "ruleClassName": "group_library",
             "attributes": {
               "repo_prefix": "trlc_dependencies_311_",
               "groups": {}
-            }
-          },
-          "trlc_dependencies_311_pylint": {
-            "bzlFile": "@@rules_python~//python/pip_install:pip_repository.bzl",
-            "ruleClassName": "whl_library",
-            "attributes": {
-              "requirement": "pylint>=2.17",
-              "repo": "trlc_dependencies_311",
-              "repo_prefix": "trlc_dependencies_311_",
-              "whl_patches": {},
-              "experimental_target_platforms": [],
-              "python_interpreter": "",
-              "python_interpreter_target": "@@rules_python~~python~python_3_11_host//:python",
-              "quiet": true,
-              "timeout": 600,
-              "isolated": true,
-              "extra_pip_args": [],
-              "download_only": false,
-              "pip_data_exclude": [],
-              "enable_implicit_namespace_pkgs": false,
-              "environment": {},
-              "envsubst": [],
-              "group_name": "",
-              "group_deps": []
             }
           }
         },

@@ -61,7 +61,7 @@ class Parser:
             self.advance()
         elif self.nt is None:
             self.error(
-                location.File_Reference(filename = self.lexer.file_name),
+                location.File_Reference(filename=self.lexer.file_name),
                 "expected %s, found EOF" % kind)
         elif value is None:
             self.error(self.nt.loc,
@@ -81,8 +81,8 @@ class Parser:
     def parse(self):
         while self.nt:
             if self.peek("KEYWORD", "requirements") or \
-               self.peek("KEYWORD", "implementation") or \
-               self.peek("KEYWORD", "activity"):
+                    self.peek("KEYWORD", "implementation") or \
+                    self.peek("KEYWORD", "activity"):
                 self.parse_level_declaration()
             else:
                 self.error(self.nt.loc,
@@ -102,13 +102,13 @@ class Parser:
                        "duplicate declaration")
 
         item = {
-            "name"                   : level_name,
-            "kind"                   : level_kind,
-            "traces"                 : [],
-            "source"                 : [],
-            "needs_tracing_up"       : False,
-            "needs_tracing_down"     : False,
-            "raw_trace_requirements" : []
+            "name": level_name,
+            "kind": level_kind,
+            "traces": [],
+            "source": [],
+            "needs_tracing_up": False,
+            "needs_tracing_down": False,
+            "raw_trace_requirements": []
         }
         self.levels[level_name] = item
 
@@ -120,8 +120,8 @@ class Parser:
                 self.match("COLON")
                 self.match("STRING")
                 source_info = {
-                    "file"    : self.ct.value(),
-                    "filters" : [],
+                    "file": self.ct.value(),
+                    "filters": [],
                 }
                 if level_kind == "requirements":
                     source_info["valid_status"] = []
@@ -188,6 +188,23 @@ class Parser:
                     self.levels[self.ct.value()]["needs_tracing_down"] = True
                 item["traces"].append(self.ct.value())
                 item["needs_tracing_up"] = True
+
+                self.match("SEMI")
+            elif self.peek("KEYWORD", "down"):
+                self.match("KEYWORD", "down")
+                self.match("COLON")
+                self.match("STRING")
+                if self.ct.value() == level_name:
+                    self.error(self.ct.loc,
+                               "cannot trace to yourself")
+                elif self.ct.value() not in self.levels:
+                    self.error(self.ct.loc,
+                               "unknown item %s" % self.ct.value())
+                else:
+                    self.levels[self.ct.value()]["needs_tracing_up"] = False
+                    self.levels[self.ct.value()]["traces"].append(level_name)
+                item["needs_tracing_down"] = True
+                item["needs_tracing_up"] = False
 
                 self.match("SEMI")
 

@@ -24,7 +24,11 @@ import subprocess
 import hashlib
 import tempfile
 
-from lobster.html import htmldoc, assets
+import platform
+
+print(platform.python_version())
+
+from lobster.html import htmldoc
 from lobster.report import Report
 from lobster.location import (Void_Reference,
                               File_Reference,
@@ -34,6 +38,20 @@ from lobster.items import (Tracing_Status, Item,
                            Requirement, Implementation, Activity)
 
 LOBSTER_GH = "https://github.com/bmw-software-engineering/lobster"
+
+SVG_ALERT_TRIANGLE = r'''<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-alert-triangle"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>'''
+
+SVG_AWARD = r'''<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-award"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>'''
+
+SVG_CHECK_SQUARE = r'''<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-check-square"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>'''
+
+SVG_CHEVRON_DOWN = r'''<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-down"><polyline points="6 9 12 15 18 9"></polyline></svg>'''
+
+SVG_EXTERNAL_LINK = r'''<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-external-link"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>'''
+
+SVG_LINK = r'''<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-link"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>'''
+
+SVG_MENU = r'''<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-menu"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>'''
 
 
 def is_dot_available():
@@ -92,15 +110,12 @@ def xref_item(item, link=True, brief=False):
     if brief:
         rv = ""
     elif isinstance(item, Requirement):
-        rv = html.escape(item.framework + " " +
-                         item.kind.capitalize())
+        rv = item.framework + " " + item.kind.capitalize()
     elif isinstance(item, Implementation):
-        rv = html.escape(item.language + " " +
-                         item.kind.capitalize())
+        rv = item.language + " " + item.kind.capitalize()
     else:
         assert isinstance(item, Activity)
-        rv = html.escape(item.framework + " " +
-                         item.kind.capitalize())
+        rv = item.framework + " " + item.kind.capitalize()
     if not brief:
         rv += " "
 
@@ -129,9 +144,9 @@ def create_policy_diagram(doc, report):
         style += ', href="#sec-%s"' % name_hash(level["name"])
 
         graph += '  n_%s [label="%s", %s];\n' % \
-            (name_hash(level["name"]),
-             level["name"],
-             style)
+                 (name_hash(level["name"]),
+                  level["name"],
+                  style)
 
     for level in report.config.values():
         source = name_hash(level["name"])
@@ -175,7 +190,7 @@ def create_item_coverage(doc, report):
         doc.add_line("<tr>")
         doc.add_line('<td><a href="#sec-%s">%s</a></td>' %
                      (name_hash(level["name"]),
-                      html.escape(level["name"])))
+                      level["name"]))
         doc.add_line("<td>%.1f%%</td>" % data["coverage"])
         doc.add_line("<td>")
         doc.add_line('<progress value="%u" max="%u">' %
@@ -193,21 +208,19 @@ def write_item_box_begin(doc, item):
     assert isinstance(doc, htmldoc.Document)
     assert isinstance(item, Item)
 
-    doc.add_line('<!-- begin item %s -->' % html.escape(item.tag.key()))
-
+    doc.add_line('<!-- begin item %s -->' % (item.tag.key()))
     doc.add_line('<div class="item-%s" id="item-%s">' %
                  (item.tracing_status.name.lower(),
                   item.tag.hash()))
 
     doc.add_line('<div class="item-name">%s %s</div>' %
-                 (assets.SVG_CHECK_SQUARE
+                 (SVG_CHECK_SQUARE
                   if item.tracing_status in (Tracing_Status.OK,
                                              Tracing_Status.JUSTIFIED)
-                  else assets.SVG_ALERT_TRIANGLE,
-                  xref_item(item, link=False)))
+                  else SVG_ALERT_TRIANGLE, xref_item(item, link=False)))
 
     doc.add_line('<div class="attribute">Source: ')
-    doc.add_line(assets.SVG_EXTERNAL_LINK)
+    doc.add_line(SVG_EXTERNAL_LINK)
     doc.add_line(item.location.to_html())
     doc.add_line("</div>")
 
@@ -237,7 +250,7 @@ def write_item_tracing(doc, report, item):
         doc.add_line("<div>Justifications:")
         doc.add_line("<ul>")
         for msg in item.just_global + item.just_up + item.just_down:
-            doc.add_line("<li>%s</li>" % html.escape(msg))
+            doc.add_line("<li>%s</li>" % msg)
         doc.add_line("</ul>")
         doc.add_line("</div>")
 
@@ -245,7 +258,7 @@ def write_item_tracing(doc, report, item):
         doc.add_line("<div>Issues:")
         doc.add_line("<ul>")
         for msg in item.messages:
-            doc.add_line("<li>%s</li>" % html.escape(msg))
+            doc.add_line("<li>%s</li>" % msg)
         doc.add_line("</ul>")
         doc.add_line("</div>")
 
@@ -268,77 +281,77 @@ def write_html(fd, report):
 
     # Item styles
     doc.style[".item-ok, .item-partial, .item-missing, .item-justified"] = {
-        "border"        : "1px solid black",
-        "border-radius" : "0.5em",
-        "margin-top"    : "0.4em",
-        "padding"       : "0.25em",
+        "border": "1px solid black",
+        "border-radius": "0.5em",
+        "margin-top": "0.4em",
+        "padding": "0.25em",
     }
     doc.style[".item-ok:target, "
               ".item-partial:target, "
               ".item-missing:target, "
               ".item-justified:target"] = {
-        "border" : "3px solid black",
+        "border": "3px solid black",
     }
     doc.style[".subtle-ok, "
               ".subtle-partial, "
               ".subtle-missing, "
               ".subtle-justified"] = {
-        "padding-left"  : "0.2em",
+        "padding-left": "0.2em",
     }
     doc.style[".item-ok"] = {
-        "background-color" : "#efe",
+        "background-color": "#efe",
     }
     doc.style[".item-partial"] = {
-        "background-color" : "#ffe",
+        "background-color": "#ffe",
     }
     doc.style[".item-missing"] = {
-        "background-color" : "#fee",
+        "background-color": "#fee",
     }
     doc.style[".item-justified"] = {
-        "background-color" : "#eee",
+        "background-color": "#eee",
     }
     doc.style[".subtle-ok"] = {
-        "border-left" : "0.2em solid #8f8",
+        "border-left": "0.2em solid #8f8",
     }
     doc.style[".subtle-partial"] = {
-        "border-left" : "0.2em solid #ff8",
+        "border-left": "0.2em solid #ff8",
     }
     doc.style[".subtle-missing"] = {
-        "border-left" : "0.2em solid #f88",
+        "border-left": "0.2em solid #f88",
     }
     doc.style[".subtle-justified"] = {
-        "border-left" : "0.2em solid #888",
+        "border-left": "0.2em solid #888",
     }
     doc.style[".item-name"] = {
-        "font-size" : "125%",
-        "font-weight" : "bold",
+        "font-size": "125%",
+        "font-weight": "bold",
     }
     doc.style[".attribute"] = {
-        "margin-top" : "0.5em",
+        "margin-top": "0.5em",
     }
 
     # Columns
     doc.style[".columns"] = {
-        "display" : "flex",
+        "display": "flex",
     }
     doc.style[".columns .column"] = {
-        "flex" : "45%",
+        "flex": "45%",
     }
 
     # Tables
     doc.style["thead tr"] = {
-        "font-weight" : "bold",
+        "font-weight": "bold",
     }
     doc.style["tbody tr.alt"] = {
-        "background-color" : "#eee",
+        "background-color": "#eee",
     }
 
     # Text
     doc.style["blockquote"] = {
-        "font-style"   : "italic",
-        "border-left"  : "0.2em solid gray",
-        "padding-left" : "0.4em",
-        "margin-left"  : "0.5em",
+        "font-style": "italic",
+        "border-left": "0.2em solid gray",
+        "padding-left": "0.4em",
+        "margin-left": "0.5em",
     }
 
     ### Menu & Navigation
@@ -377,7 +390,7 @@ def write_html(fd, report):
     doc.add_heading(2, "Issues", "issues")
     has_issues = False
     for item in sorted(report.items.values(),
-                       key = lambda x: x.location.sorting_key()):
+                       key=lambda x: x.location.sorting_key()):
         if item.tracing_status not in (Tracing_Status.OK,
                                        Tracing_Status.JUSTIFIED):
             for message in item.messages:
@@ -411,11 +424,11 @@ def write_html(fd, report):
             if level["kind"] != kind:
                 continue
             doc.add_heading(4,
-                            html.escape(level["name"]),
+                            level["name"],
                             name_hash(level["name"]))
             if items_by_level[level["name"]]:
                 for item in sorted(items_by_level[level["name"]],
-                                   key = lambda x: x.location.sorting_key()):
+                                   key=lambda x: x.location.sorting_key()):
                     if isinstance(item.location, Void_Reference):
                         new_file_heading = "Unknown"
                     elif isinstance(item.location, (File_Reference,
@@ -423,24 +436,24 @@ def write_html(fd, report):
                         new_file_heading = item.location.filename
                     elif isinstance(item.location, Codebeamer_Reference):
                         new_file_heading = "Codebeamer %s, tracker %u" % \
-                            (item.location.cb_root,
-                             item.location.tracker)
+                                           (item.location.cb_root,
+                                            item.location.tracker)
                     else:  # pragma: no cover
                         assert False
                     if new_file_heading != file_heading:
                         file_heading = new_file_heading
-                        doc.add_heading(5, html.escape(file_heading))
+                        doc.add_heading(5, file_heading)
 
                     write_item_box_begin(doc, item)
                     if isinstance(item, Requirement) and item.status:
                         doc.add_line('<div class="attribute">')
-                        doc.add_line("Status: %s" % html.escape(item.status))
+                        doc.add_line("Status: %s" % item.status)
                         doc.add_line('</div>')
                     if isinstance(item, Requirement) and item.text:
                         doc.add_line('<div class="attribute">')
                         doc.add_line(
                             "<blockquote>%s</blockquote>" %
-                            html.escape(item.text).replace("\n", "<br>"))
+                            item.text.replace("\n", "<br>"))
                         doc.add_line('</div>')
                     write_item_tracing(doc, report, item)
                     write_item_box_end(doc)
@@ -473,8 +486,8 @@ def main():
     report.load_report(options.lobster_report)
 
     with open(options.out, "w", encoding="UTF-8") as fd:
-        write_html(fd     = fd,
-                   report = report)
+        write_html(fd=fd,
+                   report=report)
         print("LOBSTER HTML report written to %s" % options.out)
 
 

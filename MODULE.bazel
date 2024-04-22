@@ -21,8 +21,17 @@ use_repo(python, "python_versions")
 bazel_dep(name = "googletest", version = "1.13.0")
 bazel_dep(name = "trlc", version = "0.0.0")
 
-git_override(
-    commit = "ce60a032630c52f951569be07ced1646536adf74",
-    module_name = "trlc",
-    remote = "https://github.com/castler/trlc.git",
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+
+pip.parse(
+    hub_name = "lobster_dependencies",
+    python_version = "3.11",
+    requirements_lock = "//:requirements.txt",
 )
+
+use_repo(pip, "lobster_dependencies")
+#git_override(
+#    commit = "ce60a032630c52f951569be07ced1646536adf74",
+#    module_name = "trlc",
+#    remote = "https://github.com/castler/trlc.git",
+#)

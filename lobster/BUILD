@@ -1,3 +1,5 @@
+load("@lobster_dependencies//:requirements.bzl", "requirement")
+
 py_library(
     name = "lobster",
     srcs = glob([
@@ -5,7 +7,8 @@ py_library(
         "html/*.py",
         "*.py",
     ]),
-    data = ["//assets"],
     imports = ["."],
-    deps = [],
+    deps = [
+        requirement("graphviz-py"),
+    ],
 )

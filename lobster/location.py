@@ -66,7 +66,7 @@ class Location(metaclass=ABCMeta):
             raise LOBSTER_Exception(
                 "malformed location data, missing %s" % err.args[0],
                 json) from err
-        except AssertionError:
+        except AssertionError as err:
             raise LOBSTER_Exception(
                 "malformed %s location data" % json["kind"],
                 json) from err
