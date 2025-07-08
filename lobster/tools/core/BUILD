@@ -4,6 +4,7 @@ py_binary(
     deps = [
         "//lobster",
     ],
+    visibility = ["//:__subpackages__"],
 )
 
 py_binary(
@@ -12,6 +13,7 @@ py_binary(
     deps = [
         "//lobster",
     ],
+    visibility = ["//:__subpackages__"],
 )
 
 py_binary(
@@ -20,6 +22,7 @@ py_binary(
     deps = [
         "//lobster",
     ],
+    visibility = ["//:__subpackages__"],
 )
 
 py_binary(
@@ -28,4 +31,5 @@ py_binary(
     deps = [
         "//lobster",
     ],
+    visibility = ["//:__subpackages__"],
 )

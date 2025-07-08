@@ -4,4 +4,5 @@ py_binary(
     deps = [
         "//lobster",
     ],
+    visibility = ["//:__subpackages__"],
 )
