@@ -11,4 +11,5 @@ py_library(
     deps = [
         requirement("graphviz-py"),
     ],
+    visibility = ["//:__subpackages__"],
 )

@@ -5,4 +5,5 @@ py_binary(
         "//lobster",
         "@trlc//trlc",
     ],
+    visibility = ["//:__subpackages__"],
 )
