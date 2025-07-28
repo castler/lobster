@@ -22,6 +22,7 @@ import html
 import subprocess
 import hashlib
 import tempfile
+import sys
 from datetime import datetime, timezone
 
 import markdown
@@ -608,3 +609,7 @@ class HtmlReportTool(MetaDataToolBase):
 
 def main() -> int:
     return HtmlReportTool().run()
+
+
+if __name__ == "__main__":
+    sys.exit(main())
