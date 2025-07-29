@@ -195,6 +195,17 @@ jobs:
       - name: Run integration tests
         run: |
           make integration-tests
+  bazel-integration:
+    name: Bazel Integration
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: bazel-contrib/setup-bazel@0.15.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}
+          repository-cache: true
+      - uses: actions/checkout@v4
+      - run: bazel test //...
   failure:
     name: Check all jobs
     needs:
@@ -203,6 +214,7 @@ jobs:
       - trlc
       - test
       - integration-tests
+      - bazel-integration
     if: ${{ failure() || cancelled() }}
     runs-on: ubuntu-24.04
     steps:
