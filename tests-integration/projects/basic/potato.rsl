@@ -1,0 +1,34 @@
+package example
+
+tuple Codebeamer_Id {
+  item Integer
+  separator @
+  version optional Integer
+}
+
+type Requirement
+{
+  text               String
+  just_up   optional String
+  just_down optional String
+}
+
+type Information
+{
+  text String
+}
+
+type Tagged_Requirement extends Requirement
+{
+  extra_text optional String
+  trace_cb optional Codebeamer_Id [1 .. *]
+}
+
+type Linked_Requirement extends Requirement
+{
+  trace_trlc optional Requirement [1 .. *]
+}
+
+checks Requirement {
+   len(text) >= 10, warning "this is a bit short", text
+}

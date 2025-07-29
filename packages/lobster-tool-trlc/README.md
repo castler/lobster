@@ -5,10 +5,6 @@ The **L**ightweight **O**pen **B**MW **S**oftware **T**raceability
 and requirements coverage, which is essential for meeting standards
 such as ISO 26262.
 
-This package contains a tool to interface with the proprietary
-requirements management tool
-[Codebeamer](https://intland.com/codebeamer).
-
 ## Configuration
 
 This tool is a bit more complex and you need to supply a config file,
@@ -99,6 +95,40 @@ attach this justification on the actual offending object.
 
 Finally the "global" justification is a catch all: it just means no
 tracing policy will be validated at all when considering this object.
+
+## Executing lobster-trlc tool
+
+`lobster-trlc` takes two command line arguments as follows:
+* `--config` - Yaml based config file path in which the following parameters can be 
+  mentioned.
+  * `trlc_config_file`: trlc configuration file as mentioned in the configuration 
+    section and also in the example mentioned below see (trlc_config.conf)
+  * `inputs`: A list of input file paths (can include directories).
+  * `inputs_from_file`: A file containing paths to input files or directories.
+  * `traverse_bazel_dirs`:  Enter bazel-* directories, which are excluded by default.
+   
+* `out`: The name of the output file where results will be stored.
+
+### Command
+
+lobster-trlc --config "path to the yaml config file" --out "output file path"
+
+### Example
+
+#### trlc_config.conf
+```yaml
+req.Requirement {
+  description = description
+}
+```
+
+#### trlc_config_file.yaml
+```yaml
+inputs: [list of paths to *.trlc and *. rsl files separated by commas]
+trlc_config_file: "path to the above mentioned trlc_config.conf file"
+```
+#### In this case the command will be
+`lobster-trlc --config=trlc_config_file.yaml --out=trlc.lobster`
 
 ## Tools
 

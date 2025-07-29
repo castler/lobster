@@ -1,0 +1,223 @@
+name: LOBSTER CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+    types:
+      - opened
+      - ready_for_review
+      - synchronize
+      - reopened
+
+permissions:
+  contents: read
+
+jobs:
+  # Job to run change detection
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      py_modified: ${{ steps.changed-py-files.outputs.any_modified }}
+      trlc_modified: ${{ steps.changed-trlc-files.outputs.any_modified }}
+      only_docu_modified: ${{ steps.changed-docu-files.outputs.only_modified }}
+    steps:
+    - uses: actions/checkout@v4
+    - id: changed-py-files
+      uses: tj-actions/changed-files@823fcebdb31bb35fdf2229d9f769b400309430d0 #v46.0.3
+      with:
+        output_renamed_files_as_deleted_and_added: true
+        files: |
+          *.py
+          **/*.py
+          *.cfg
+          **/*.cfg
+    - id: changed-docu-files
+      uses: tj-actions/changed-files@823fcebdb31bb35fdf2229d9f769b400309430d0 #v46.0.3
+      with:
+        output_renamed_files_as_deleted_and_added: true
+        files: |
+          *.md
+          **/*.md
+          .github/CODEOWNERS
+          documentation/**
+    - id: changed-trlc-files
+      uses: tj-actions/changed-files@823fcebdb31bb35fdf2229d9f769b400309430d0 #v46.0.3
+      with:
+        output_renamed_files_as_deleted_and_added: true
+        files: |
+          *.rsl
+          **/*.rsl
+          *.trlc
+          **/*.trlc
+    - name: Debug output
+      run: |
+        echo "py any_modified: ${{ steps.changed-py-files.outputs.any_modified }}"
+        echo "trlc any_modified: ${{ steps.changed-trlc-files.outputs.any_modified }}"
+        echo "docu only_modified: ${{ steps.changed-docu-files.outputs.only_modified }}"
+
+  lint-code:
+    name: PyLint Code
+    needs: changes
+    if: ${{ needs.changes.outputs.py_modified == 'true' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r requirements_dev.txt
+          make lobster/html/assets.py
+      - name: Executing linter
+        run: |
+          make lint
+  lint-system-tests:
+    name: PyLint System Tests
+    needs: changes
+    if: ${{ needs.changes.outputs.py_modified == 'true' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r requirements_dev.txt
+      - name: Executing system test linter
+        run: |
+          make lint-system-tests
+  lint-unit-tests:
+    name: PyLint Unit Tests
+    needs: changes
+    if: ${{ needs.changes.outputs.py_modified == 'true' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r requirements_dev.txt
+      - name: Executing unit test linter
+        run: |
+          make lint-unit-tests
+  trlc:
+    name: TRLC
+    needs: changes
+    if: ${{ needs.changes.outputs.trlc_modified == 'true' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r requirements.txt
+      - name: Run TRLC
+        run: |
+          make trlc
+  test:
+    name: TestSuite
+    needs: [changes, lint-code, lint-system-tests, trlc]
+    if: ${{ always() && needs.changes.outputs.only_docu_modified == 'false' }}
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, windows-2022, macos-13, macos-14]
+        py-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        include:
+          - os: macos-13
+            brew: "/usr/local"
+          - os: macos-14
+            brew: "/opt/homebrew"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install python version
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.py-version }}
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r requirements_dev.txt
+          make lobster/html/assets.py
+      - name: Install gnu make on macos
+        if: startsWith(matrix.os, 'macos')
+        run: |
+          brew install make
+          echo "${{ matrix.brew }}/opt/make/libexec/gnubin" >> $GITHUB_PATH
+      - name: Executing unit tests
+        run: |
+          make unit-tests
+      - name: Executing system tests
+        run: |
+          make system-tests
+      - name: Coverage analysis
+        run: |
+          make coverage-system
+          make coverage-unit
+  integration-tests:
+    name: Integration tests
+    needs: [changes, lint-code, lint-system-tests, trlc]
+    if: ${{ always() && needs.changes.outputs.only_docu_modified == 'false' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install python version
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r requirements_dev.txt
+          sudo apt install cmake ninja-build graphviz
+      - name: Cache clang-tidy
+        id: cache-clang-tidy
+        uses: actions/cache@v4
+        with:
+          path: ~/work/lobster/llvm-project/build/bin/clang-tidy
+          key: cache-clang-tidy
+      - if: ${{ steps.cache-clang-tidy.outputs.cache-hit != 'true' }}
+        name: Build clang-tidy
+        run: |
+          make clang-tidy
+      - if: ${{ steps.cache-clang-tidy.outputs.cache-hit != 'true' }}
+        name: Save cache
+        uses: actions/cache/save@v4
+        with:
+          path: ~/work/lobster/llvm-project/build/bin/clang-tidy
+          key: cache-clang-tidy
+      - name: Setup bazel (for lobster-gtest)
+        uses: jwlawson/actions-setup-bazel@v2
+        with:
+          bazel-version: '8.0.0'
+      - name: Run integration tests
+        run: |
+          make integration-tests
+  bazel-integration:
+    name: Bazel Integration
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: bazel-contrib/setup-bazel@0.15.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}
+          repository-cache: true
+      - uses: actions/checkout@v4
+      - run: bazel test //...
+  failure:
+    name: Check all jobs
+    needs:
+      - lint-code
+      - lint-system-tests
+      - trlc
+      - test
+      - integration-tests
+      - bazel-integration
+    if: ${{ failure() || cancelled() }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Failure
+        run: exit 1
+

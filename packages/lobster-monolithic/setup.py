@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 
-import os
 import re
-import sys
 import setuptools
-import glob
 
 from lobster import version
 
@@ -13,21 +10,6 @@ gh_project = "bmw-software-engineering/lobster"
 
 with open("README.md", "r") as fd:
     long_description = fd.read()
-
-package_requirements = []
-entrypoints = []
-for path, _, files in os.walk(".."):
-    for filename in files:
-        if filename == "requirements":
-            with open(os.path.join(path, filename), "r") as fd:
-                package_requirements += [line
-                                         for line in fd.read().splitlines()
-                                         if line.strip()]
-        elif filename == "entrypoints":
-            with open(os.path.join(path, filename), "r") as fd:
-                entrypoints += [line
-                                for line in fd.read().splitlines()
-                                if line.strip()]
 
 # For the readme to look right on PyPI we need to translate any
 # relative links to absolute links to github.
@@ -55,7 +37,7 @@ setuptools.setup(
     name="bmw-lobster-monolithic",
     version=version.LOBSTER_VERSION,
     author="Bayerische Motoren Werke Aktiengesellschaft (BMW AG)",
-    author_email="florian.schanda@bmw.de",
+    author_email="philipp.wullstein-kammler@bmw.de",
     description="Monolithic package for all LOBSTER Tools",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -63,7 +45,17 @@ setuptools.setup(
     project_urls=project_urls,
     license="GNU Affero General Public License v3",
     packages=setuptools.find_packages(),
-    install_requires=package_requirements,
+    package_data={
+        "lobster.tools.core.html_report":["assets/*"]
+    },
+    install_requires=[
+        "miss-hit>=0.9.42",
+        "requests>=2.31.0",
+        "libcst>=1.1.0",
+        "trlc>=2.0.1",
+        "Markdown~=3.7",
+        "PyYAML>=6.0",
+    ],
     python_requires=">=3.7, <4",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
@@ -74,6 +66,19 @@ setuptools.setup(
         "Topic :: Software Development",
     ],
     entry_points={
-        "console_scripts": entrypoints
+        "console_scripts": [
+            "lobster-report=lobster.tools.core.report.report:main",
+            "lobster-html-report=lobster.tools.core.html_report.html_report:main",
+            "lobster-online-report=lobster.tools.core.online_report.online_report:main",
+            "lobster-online-report-nogit=lobster.tools.core.online_report_nogit.online_report_nogit:main",
+            "lobster-ci-report=lobster.tools.core.ci_report.ci_report:main",
+            "lobster-codebeamer = lobster.tools.codebeamer.codebeamer:main",
+            "lobster-python = lobster.tools.python.python:main",
+            "lobster-cpp = lobster.tools.cpp.cpp:main",
+            "lobster-cpptest = lobster.tools.cpptest.cpptest:main",
+            "lobster-gtest = lobster.tools.gtest.gtest:main",
+            "lobster-json = lobster.tools.json.json:main",
+            "lobster-trlc = lobster.tools.trlc.trlc:main"
+        ]
     },
 )

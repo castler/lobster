@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #
 # LOBSTER - Lightweight Open BMW Software Traceability Evidence Report
-# Copyright (C) 2023 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
+# Copyright (C) 2023, 2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -17,22 +17,25 @@
 # License along with this program. If not, see
 # <https://www.gnu.org/licenses/>.
 
-import os.path
-import io
 from collections.abc import Iterable
 import json
+from typing import Dict, Optional, Sequence, TextIO, Type, Union
 
 from lobster.errors import Message_Handler
 from lobster.location import File_Reference
 from lobster.items import Requirement, Implementation, Activity
 
 
-def lobster_write(fd, kind, generator, items):
-    assert isinstance(fd, io.TextIOBase)
-    assert kind in (Requirement, Implementation, Activity)
-    assert isinstance(generator, str)
-    assert isinstance(items, Iterable)
-    assert all(isinstance(item, kind) for item in items)
+def lobster_write(
+        fd: TextIO,
+        kind: Union[Type[Requirement], Type[Implementation], Type[Activity]],
+        generator: str,
+        items: Iterable,
+):
+    if not all(isinstance(item, kind) for item in items):
+        raise ValueError(
+            f"All elements in 'items' must be of the type {kind.__name__}!",
+        )
 
     if kind is Requirement:
         schema  = "lobster-req-trace"
@@ -52,13 +55,13 @@ def lobster_write(fd, kind, generator, items):
     fd.write("\n")
 
 
-def lobster_read(mh, filename, level, items, source_info=None):
-    assert isinstance(mh, Message_Handler)
-    assert isinstance(filename, str)
-    assert isinstance(level, str)
-    assert os.path.isfile(filename)
-    assert isinstance(source_info, dict) or source_info is None
-
+def lobster_read(
+        mh,
+        filename: str,
+        level: str,
+        items: Dict[str, Union[Activity, Implementation, Requirement]],
+        source_info: Optional[Dict] = None,
+):
     loc = File_Reference(filename)
 
     # Read and validate JSON
@@ -101,6 +104,7 @@ def lobster_read(mh, filename, level, items, source_info=None):
                  "version %u for schema %s is not supported" %
                  (data["version"], data["schema"]))
 
+    duplicate_items = []
     # Convert to items, and integrate into symbol table
     for raw in data["data"]:
         if data["schema"] == "lobster-req-trace":
@@ -114,7 +118,7 @@ def lobster_read(mh, filename, level, items, source_info=None):
 
         if source_info is not None:
             item.perform_source_checks(source_info)
-    
+
             # evaluate source_info filters
             for f, v in source_info['filters']:
                 if f == 'prefix':
@@ -124,10 +128,31 @@ def lobster_read(mh, filename, level, items, source_info=None):
 
         if all(filter_conditions):
             if item.tag.key() in items:
-                mh.error(item.location,
-                        "duplicate definition of %s, "
-                        "previously defined at %s" %
-                        (item.tag.key(),
-                        items[item.tag.key()].location.to_string()))
+                # 'duplicate definition' errors are fatal, but the user wants to see all
+                # of them. So store the affected items in a list first, and create
+                # errors later.
+                duplicate_items.append(item)
+            else:
+                items[item.tag.key()] = item
 
-            items[item.tag.key()] = item
+    signal_duplicate_items(mh, items, duplicate_items)
+
+
+def signal_duplicate_items(
+        mh: Message_Handler,
+        items,
+        duplicate_items: Sequence[Union[Activity, Implementation, Requirement]],
+):
+    """
+    Report errors for duplicate items to the message handler.
+    If there are any duplicate items, the last one is considered fatal.
+    """
+    if duplicate_items:
+        for counter, item in enumerate(duplicate_items, start=1):
+            mh.error(
+                location=item.location,
+                message=f"duplicate definition of {item.tag.key()}, "
+                        f"previously defined at "
+                        f"{items[item.tag.key()].location.to_string()}",
+                fatal=(counter == len(duplicate_items)),
+            )

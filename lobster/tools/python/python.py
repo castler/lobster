@@ -17,11 +17,12 @@
 # License along with this program. If not, see
 # <https://www.gnu.org/licenses/>.
 
+from argparse import Namespace
 import sys
-import argparse
 import os.path
 import multiprocessing
 import functools
+import re
 
 from libcst.metadata import PositionProvider
 import libcst as cst
@@ -29,9 +30,60 @@ import libcst as cst
 from lobster.items import Tracing_Tag, Implementation, Activity
 from lobster.location import File_Reference
 from lobster.io import lobster_write
+from lobster.meta_data_tool_base import MetaDataToolBase
 
 LOBSTER_TRACE_PREFIX = "# lobster-trace: "
 LOBSTER_JUST_PREFIX = "# lobster-exclude: "
+func_name = []
+
+
+def count_occurrence_of_last_function_from_function_name_list(function_names):
+    """
+    Returns the last function and class name (if present) in a list along with
+    the count of its previous occurrences.
+
+    The function identifies the last entry in the `function_names` list, extracts
+    the function and class names (if applicable), and counts prior occurrences of
+    the same function.
+    The result is formatted as `module.class.function-count` or `module.function-count`.
+
+    Args:
+        function_names (list):
+            List of strings formatted as `module.class.function:line_number`
+            or `module.function:line_number`.
+
+    Returns:
+        str: The last function (and class if applicable) with its occurrence count,
+             formatted as `module.class.function-count` or `module.function-count`.
+
+    Examples:
+        function_names = ['hello.add:2', 'hello.sub:5', 'hello.add:8']
+        returns: 'hello.add-2'
+        class_function_names = ['Example.hello.add:2', 'Example.hello.sub:5',]
+        returns: 'Example.hello.add-2'
+    """
+    function_and_file_name = re.split(r"[.:]", function_names[-1])
+    class_name_with_module = function_names[-1].split(':', 1)[0].split(".")
+
+    if len(class_name_with_module) == 3:
+        function_and_file_name[1] = (class_name_with_module[1] + '.' +
+                                     class_name_with_module[2])
+
+    filename = function_and_file_name[0]
+    last_function = function_and_file_name[1]
+    count = 0
+    for element in range(0, len(function_names) - 1):
+        class_name_with_function = function_names[element].split(':', 1)[0].split(".")
+        if len(class_name_with_function) == 3:
+            if last_function == (class_name_with_function[1] + '.' +
+                                 class_name_with_function[2]):
+                count += 1
+        if re.split(r"[.:]", function_names[element])[1] == last_function:
+            count += 1
+    function_name = (filename + "." + last_function +
+                     ("-" + str(count) if count > 0 else ''))
+
+    return function_name
 
 
 def parse_value(val):
@@ -90,7 +142,11 @@ class Python_Traceable_Node:
             rv = self.parent.fqn() + "."
         else:
             rv = ""
-        rv += self.name
+        if self.location.line is not None and \
+          isinstance(self, Python_Function):
+            rv += f"{self.name}:{str(self.location.line)}"
+        else:
+            rv += self.name
         return rv
 
     def lobster_tag(self):
@@ -193,21 +249,30 @@ class Python_Function(Python_Traceable_Node):
         assert schema is Implementation or schema is Activity
         assert isinstance(items, list)
 
+        func_name.append(self.fqn())
+        tagname = count_occurrence_of_last_function_from_function_name_list(
+            func_name
+        )
+        pattern = r"[-]"
+        val = re.split(pattern, tagname)
+        name_value = val[0]
+
         if schema is Implementation:
             l_item = Implementation(tag      = Tracing_Tag("python",
-                                                           self.fqn()),
+                                                           tagname),
                                     location = self.location,
                                     language = "Python",
                                     kind     = self.kind,
-                                    name     = self.fqn())
-        else:
-            if not self.name.startswith("test"):
-                return
+                                    name     = name_value)
+        elif self.name.startswith("test") or self.name.startswith("_test") \
+                or self.name.endswith("test"):
             l_item = Activity(tag = Tracing_Tag("pyunit",
                                                 self.fqn()),
                               location  = self.location,
                               framework = "PyUnit",
                               kind      = "Test")
+        else:
+            return
 
         for tag in self.tags:
             l_item.add_tracing_target(tag)
@@ -380,104 +445,107 @@ def process_file(file_name, options):
         raise
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("files",
-                    nargs="+",
-                    metavar="FILE|DIR")
-    ap.add_argument("--activity",
-                    action="store_true",
-                    default=False,
-                    help=("generate activity traces (tests) instead of"
-                          " an implementation trace"))
-    ap.add_argument("--out",
-                    default=None)
-    ap.add_argument("--single",
-                    action="store_true",
-                    default=False,
-                    help="don't multi-thread")
-    ap.add_argument("--only-tagged-functions",
-                    default=False,
-                    action="store_true",
-                    help="only trace functions with tags")
-    grp = ap.add_mutually_exclusive_group()
-    grp.add_argument("--parse-decorator",
-                     nargs=2,
-                     metavar=("DECORATOR", "NAME_ARG"),
-                     default=(None, None))
-    grp.add_argument("--parse-versioned-decorator",
-                     nargs=3,
-                     metavar=("DECORATOR", "NAME_ARG", "VERSION_ARG"),
-                     default=(None, None, None))
+class PythonTool(MetaDataToolBase):
+    def __init__(self):
+        super().__init__(
+            name="python",
+            description="Extract tracing tags from Python code or tests",
+            official=True,
+        )
+        ap = self._argument_parser
+        ap.add_argument("files",
+                        nargs="+",
+                        metavar="FILE|DIR")
+        ap.add_argument("--activity",
+                        action="store_true",
+                        default=False,
+                        help=("generate activity traces (tests) instead of"
+                              " an implementation trace"))
+        ap.add_argument("--out",
+                        default=None)
+        ap.add_argument("--single",
+                        action="store_true",
+                        default=False,
+                        help="don't multi-thread")
+        ap.add_argument("--only-tagged-functions",
+                        default=False,
+                        action="store_true",
+                        help="only trace functions with tags")
+        grp = ap.add_mutually_exclusive_group()
+        grp.add_argument("--parse-decorator",
+                         nargs=2,
+                         metavar=("DECORATOR", "NAME_ARG"),
+                         default=(None, None))
+        grp.add_argument("--parse-versioned-decorator",
+                         nargs=3,
+                         metavar=("DECORATOR", "NAME_ARG", "VERSION_ARG"),
+                         default=(None, None, None))
 
-    options = ap.parse_args()
+    def _run_impl(self, options: Namespace) -> int:
+        file_list = []
+        for item in options.files:
+            if os.path.isfile(item):
+                file_list.append(item)
+            elif os.path.isdir(item):
+                for path, _, files in os.walk(item):
+                    for filename in files:
+                        _, ext = os.path.splitext(filename)
+                        if ext == ".py":
+                            file_list.append(os.path.join(path, filename))
+            else:
+                self._argument_parser.error(f"{item} is not a file or directory")
 
-    file_list = []
-    for item in options.files:
-        if os.path.isfile(item):
-            file_list.append(item)
-        elif os.path.isdir(item):
-            for path, _, files in os.walk(item):
-                for filename in files:
-                    _, ext = os.path.splitext(filename)
-                    if ext == ".py":
-                        file_list.append(os.path.join(path, filename))
-        else:
-            ap.error("%s is not a file or directory" % item)
+        context = {
+            "activity"         : options.activity,
+            "decorator"        : None,
+            "dec_arg_name"     : None,
+            "dec_arg_version"  : None,
+            "exclude_untagged" : options.only_tagged_functions,
+            "namespace"        : "req",
+        }
 
-    context = {
-        "activity"         : options.activity,
-        "decorator"        : None,
-        "dec_arg_name"     : None,
-        "dec_arg_version"  : None,
-        "exclude_untagged" : options.only_tagged_functions,
-        "namespace"        : "req",
-    }
+        if options.parse_decorator[0] is not None:
+            context["decorator"]    = options.parse_decorator[0]
+            context["dec_arg_name"] = options.parse_decorator[1]
+        elif options.parse_versioned_decorator[0] is not None:
+            context["decorator"]       = options.parse_versioned_decorator[0]
+            context["dec_arg_name"]    = options.parse_versioned_decorator[1]
+            context["dec_arg_version"] = options.parse_versioned_decorator[2]
 
-    if options.parse_decorator[0] is not None:
-        context["decorator"]    = options.parse_decorator[0]
-        context["dec_arg_name"] = options.parse_decorator[1]
-    elif options.parse_versioned_decorator[0] is not None:
-        context["decorator"]       = options.parse_versioned_decorator[0]
-        context["dec_arg_name"]    = options.parse_versioned_decorator[1]
-        context["dec_arg_version"] = options.parse_versioned_decorator[2]
+        pfun = functools.partial(process_file, options=context)
+        items = []
+        ok    = True
 
-    pfun = functools.partial(process_file, options=context)
-    items = []
-    ok    = True
-
-    if options.single:
-        for file_name in file_list:
-            new_ok, new_items = pfun(file_name)
-            ok    &= new_ok
-            items += new_items
-    else:
-        with multiprocessing.Pool() as pool:
-            for new_ok, new_items in pool.imap_unordered(pfun, file_list):
+        if options.single:
+            for file_name in file_list:
+                new_ok, new_items = pfun(file_name)
                 ok    &= new_ok
                 items += new_items
+        else:
+            with multiprocessing.Pool() as pool:
+                for new_ok, new_items in pool.imap_unordered(pfun, file_list):
+                    ok    &= new_ok
+                    items += new_items
 
-    if options.activity:
-        schema = Activity
-    else:
-        schema = Implementation
+        if options.activity:
+            schema = Activity
+        else:
+            schema = Implementation
 
-    if options.out:
-        with open(options.out, "w", encoding="UTF-8") as fd:
-            lobster_write(fd, schema, "lobster_python", items)
-            fd.write("\n")
-        print("Written output for %u items to %s" % (len(items),
-                                                     options.out))
-    else:
-        lobster_write(sys.stdout, schema, "lobster_python", items)
-        print()
+        if options.out:
+            with open(options.out, "w", encoding="UTF-8") as fd:
+                lobster_write(fd, schema, "lobster_python", items)
+            print(f"Written output for {len(items)} items to {options.out}")
+        else:
+            lobster_write(sys.stdout, schema, "lobster_python", items)
+            print()
 
-    if ok:
-        return 0
-    else:
-        print("Note: Earlier parse errors make actual output unreliable")
-        return 1
+        if ok:
+            return 0
+        else:
+            print("Note: Earlier parse errors make actual output unreliable")
+            return 1
 
 
-if __name__ == "__main__":
-    sys.exit(main())
+def main() -> int:
+    return PythonTool().run()

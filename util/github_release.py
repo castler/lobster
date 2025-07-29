@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #
 # LOBSTER - Lightweight Open BMW Software Traceability Evidence Report
-# Copyright (C) 2022 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
+# Copyright (C) 2022-2024 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -57,7 +57,7 @@ def main():
             "name"     : rel_name,
             "body"     : rel_body}
 
-    r = requests.post(api_endpoint, auth=auth, data=json.dumps(data))
+    r = requests.post(api_endpoint, auth=auth, data=json.dumps(data), timeout=60)
     print(r)
 
 if __name__ == "__main__":

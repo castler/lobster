@@ -14,11 +14,6 @@ gh_project = "bmw-software-engineering/lobster"
 with open("README.md", "r") as fd:
     long_description = fd.read()
 
-with open("requirements", "r") as fd:
-    package_requirements = [line
-                            for line in fd.read().splitlines()
-                            if line.strip()]
-
 # For the readme to look right on PyPI we need to translate any
 # relative links to absolute links to github.
 fixes = []
@@ -41,17 +36,16 @@ project_urls = {
     "Source Code"   : "%s/%s"        % (gh_root, gh_project),
 }
 
-packages = ["bmw-lobster-core>=%s" % version.LOBSTER_VERSION]
+packages = ["miss-hit>=0.9.42", "bmw-lobster-core>=%s" % version.LOBSTER_VERSION]
 for dirname in glob.glob("../lobster-tool-*"):
     packages.append("bmw-%s>=%s" % (os.path.basename(dirname),
                                     version.LOBSTER_VERSION))
-packages += package_requirements
 
 setuptools.setup(
     name="bmw-lobster",
     version=version.LOBSTER_VERSION,
     author="Bayerische Motoren Werke Aktiengesellschaft (BMW AG)",
-    author_email="florian.schanda@bmw.de",
+    author_email="philipp.wullstein-kammler@bmw.de",
     description="Metapackage to install all LOBSTER Tools",
     long_description=long_description,
     long_description_content_type="text/markdown",

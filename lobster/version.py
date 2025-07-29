@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #
 # LOBSTER - Lightweight Open BMW Software Traceability Evidence Report
-# Copyright (C) 2023 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
+# Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -17,10 +17,11 @@
 # License along with this program. If not, see
 # <https://www.gnu.org/licenses/>.
 
-VERSION_TUPLE = (0, 9, 17)
+VERSION_TUPLE = (0, 13, 1)
 VERSION_SUFFIX = "dev"
 
-LOBSTER_VERSION = ("%u.%u.%u" % VERSION_TUPLE) + \
-    ("-%s" % VERSION_SUFFIX if VERSION_SUFFIX else "")
+LOBSTER_VERSION = ".".join(str(x) for x in VERSION_TUPLE) + (
+    "-%s" % VERSION_SUFFIX if VERSION_SUFFIX else ""
+)
 
 FULL_NAME = "LOBSTER %s" % LOBSTER_VERSION

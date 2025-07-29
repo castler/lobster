@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #
 # lobster_json - Extract JSON tags for LOBSTER
-# Copyright (C) 2023 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
+# Copyright (C) 2023-2025 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -16,12 +16,11 @@
 # You should have received a copy of the GNU Affero General Public
 # License along with this program. If not, see
 # <https://www.gnu.org/licenses/>.
-
-import sys
-import os.path
+import argparse
 import json
 from pathlib import PurePath
 from pprint import pprint
+from typing import Tuple, List, Set
 
 from lobster.tool import LOBSTER_Per_File_Tool
 from lobster.items import Tracing_Tag, Activity
@@ -54,14 +53,11 @@ def get_item(root, path, required):
         elif required:
             raise Malformed_Input("object does not contain %s" % field,
                                   root)
-        else:
-            return None
+        return None
 
     elif required:
         raise Malformed_Input("not an object", root)
-
-    else:
-        return None
+    return None
 
 
 def syn_test_name(file_name):
@@ -84,39 +80,75 @@ class LOBSTER_Json(LOBSTER_Per_File_Tool):
             description = "Extract tracing data from JSON files.",
             extensions  = ["json"],
             official    = True)
-        self.add_argument("--test-list",
-                          default = "",
-                          help    = ("Member name indicator resulting in a"
-                                     " list containing objects carrying test"
-                                     " data."))
-        self.add_argument("--name-attribute",
-                          default = None,
-                          help    = "Member name indicator for test name.")
-        self.add_argument("--tag-attribute",
-                          default  = None,
-                          required = True,
-                          help     = ("Member name indicator for test "
-                                      " tracing tags."))
-        self.add_argument("--justification-attribute",
-                          default  = None,
-                          help     = ("Member name indicator for "
-                                      " justifications."))
 
-    def process_tool_options(self, options, work_list):
-        self.schema = Activity
-        return True
+    # Supported config parameters for lobster-json
+    TEST_LIST = "test_list"
+    NAME_ATTRIBUTE = "name_attribute"
+    TAG_ATTRIBUTE = "tag_attribute"
+    JUSTIFICATION_ATTRIBUTE = "justification_attribute"
+    SINGLE = "single"
 
     @classmethod
-    def process(cls, options, file_name):
-        with open(file_name, "r", encoding="UTF-8") as fd:
-            data = json.load(fd)
+    def get_config_keys_manual(cls):
+        help_dict = super().get_config_keys_manual()
+        help_dict.update(
+            {
+                cls.TEST_LIST: "Member name indicator resulting in a "
+                               "list containing objects carrying test "
+                               "data.",
+                cls.NAME_ATTRIBUTE: "Member name indicator for test name.",
+                cls.TAG_ATTRIBUTE: "Member name indicator for test tracing tags.",
+                cls.JUSTIFICATION_ATTRIBUTE: "Member name indicator for "
+                                             "justifications.",
+                cls.SINGLE: "Avoid use of multiprocessing."
+            }
+        )
+        return help_dict
 
-        # First we follow the test-list items to get the actual data
-        # we're interested in.
+    def get_mandatory_parameters(self) -> Set[str]:
+        return {self.TAG_ATTRIBUTE}
+
+    def process_commandline_and_yaml_options(
+            self,
+            options: argparse.Namespace,
+    ) -> List[Tuple[File_Reference, str]]:
+        """
+        Overrides the parent class method and add fetch tool specific options from the
+        yaml
+        config
+
+        Returns
+        -------
+        options - command-line and yaml options
+        worklist - list of json files
+        """
+        work_list = super().process_commandline_and_yaml_options(options)
+        options.test_list = self.config.get(self.TEST_LIST, '')
+        options.name_attribute = self.config.get(self.NAME_ATTRIBUTE)
+        options.tag_attribute = self.config.get(self.TAG_ATTRIBUTE)
+        options.justification_attribute = self.config.get(self.JUSTIFICATION_ATTRIBUTE)
+        options.single = self.config.get(self.SINGLE, False)
+        return work_list
+
+    def process_tool_options(
+            self,
+            options: argparse.Namespace,
+            work_list: List[Tuple[File_Reference, str]],
+    ):
+        super().process_tool_options(options, work_list)
+        self.schema = Activity
+
+    @classmethod
+    def process(cls, options, file_name) -> Tuple[bool, List[Activity]]:
         try:
+            with open(file_name, "r", encoding="UTF-8") as fd:
+                data = json.load(fd)
             data = get_item(root     = data,
                             path     = options.test_list,
                             required = True)
+        except UnicodeDecodeError as decode_error:
+            print("%s: File is not encoded in utf-8: %s" % (file_name, decode_error))
+            return False, []
         except Malformed_Input as err:
             pprint(err.data)
             print("%s: malformed input: %s" % (file_name, err.msg))
@@ -175,7 +207,8 @@ class LOBSTER_Json(LOBSTER_Per_File_Tool):
 
                 l_item = Activity(
                     tag       = Tracing_Tag(namespace = "json",
-                                            tag       = item_name),
+                                            tag       = "%s:%s" %
+                                            (file_name, item_name)),
                     location  = File_Reference(file_name),
                     framework = "JSON",
                     kind      = "Test Vector")
@@ -196,9 +229,4 @@ class LOBSTER_Json(LOBSTER_Per_File_Tool):
 
 
 def main():
-    tool = LOBSTER_Json()
-    return tool.execute()
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+    return LOBSTER_Json().run()

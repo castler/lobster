@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #
 # lobster_html_report - Visualise LOBSTER report in HTML
-# Copyright (C) 2022 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
+# Copyright (C) 2022-2024 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -58,7 +58,7 @@ class Menu_Link(Menu_Item):
         assert isinstance(doc, Document)
         rv = '<a href="%s">' % self.target
         if self.target.startswith("http"):
-            rv += assets.SVG_EXTERNAL_LINK + " "
+            rv += '<svg class="icon"><use href="#svg-external-link"></use></svg>' + " "
         rv += html.escape(self.name)
         rv += "</a>"
         return [rv]
@@ -130,7 +130,7 @@ class Dropdown_Menu(Menu_Item):
         rv = ['<div class="dropdown">']
         rv.append('<button class="dropbtn">%s%s</button>' %
                   (html.escape(self.name),
-                   assets.SVG_CHEVRON_DOWN))
+                   '<svg class="icon"><use href="#svg-chevron-down"></use></svg>'))
         rv.append('<div class="dropdown-content">')
         for item in self.items:
             rv += item.generate(doc)
@@ -244,9 +244,15 @@ class Document:
             ".content" : {
                 "padding" : "0.5em",
             },
+            ".icon" : {
+                "width": "24px",
+                "height": "24px",
+                "vertical-align": "middle",
+            }
         }
         self.scripts = []
         self.body = []
+        self.css = []
 
     def add_line(self, line):
         assert isinstance(line, str)
@@ -284,6 +290,7 @@ class Document:
             "<!DOCTYPE html>",
             "<html>",
             "<head>",
+            "<meta http-equiv='Content-Type' content='text/html; charset=utf-8'>",
             "<title>%s</title>" % html.escape(self.title),
             "<style>"
         ]
@@ -292,6 +299,10 @@ class Document:
             for attr, value in style.items():
                 rv.append("  %s: %s;" % (attr, value))
             rv.append("}")
+
+        # add css files that are appended to self.files
+        for css_file in self.css:
+            rv.append(css_file)
         rv.append("</style>")
         rv.append("</head>")
         rv.append("<body>")
@@ -305,6 +316,38 @@ class Document:
         rv += navbar_content
 
         rv.append('<div class="htmlbody">')
+        rv.append('<svg style="display: none;">')
+        rv.append('<defs>')
+        rv.append('<symbol id="svg-check-square" viewBox="0 0 24 24">')
+        rv.append(assets.SVG_CHECK_SQUARE)
+        rv.append('</symbol>')
+        rv.append('</defs>')
+        rv.append('</svg>')
+
+        rv.append('<svg style="display: none;">')
+        rv.append('<defs>')
+        rv.append('<symbol id="svg-alert-triangle" viewBox="0 0 24 24">')
+        rv.append(assets.SVG_ALERT_TRIANGLE)
+        rv.append('</symbol>')
+        rv.append('</defs>')
+        rv.append('</svg>')
+
+        rv.append('<svg style="display: none;">')
+        rv.append('<defs>')
+        rv.append('<symbol id="svg-external-link" viewBox="0 0 24 24">')
+        rv.append(assets.SVG_EXTERNAL_LINK)
+        rv.append('</symbol>')
+        rv.append('</defs>')
+        rv.append('</svg>')
+
+        rv.append('<svg style="display: none;">')
+        rv.append('<defs>')
+        rv.append('<symbol id="svg-chevron-down" viewBox="0 0 24 24">')
+        rv.append(assets.SVG_CHEVRON_DOWN)
+        rv.append('</symbol>')
+        rv.append('</defs>')
+        rv.append('</svg>')
+
         rv += self.body
         rv.append('</div>')
         rv.append('</div>')

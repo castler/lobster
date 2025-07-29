@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import re
-import sys
 import setuptools
 
 from lobster import version
@@ -11,15 +10,6 @@ gh_project = "bmw-software-engineering/lobster"
 
 with open("README.md", "r") as fd:
     long_description = fd.read()
-
-with open("requirements", "r") as fd:
-    package_requirements = [line
-                            for line in fd.read().splitlines()
-                            if line.strip()]
-with open("entrypoints", "r") as fd:
-    entrypoints = [line
-                   for line in fd.read().splitlines()
-                   if line.strip()]
 
 # For the readme to look right on PyPI we need to translate any
 # relative links to absolute links to github.
@@ -47,7 +37,7 @@ setuptools.setup(
     name="bmw-lobster-core",
     version=version.LOBSTER_VERSION,
     author="Bayerische Motoren Werke Aktiengesellschaft (BMW AG)",
-    author_email="florian.schanda@bmw.de",
+    author_email="philipp.wullstein-kammler@bmw.de",
     description="Lightweight Open BMW Software Traceability Evidence Report",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -57,9 +47,18 @@ setuptools.setup(
     packages=["lobster",
               "lobster.config",
               "lobster.html",
-              "lobster.tools",
-              "lobster.tools.core"],
-    install_requires=package_requirements,
+              "lobster.tools.core.ci_report",
+              "lobster.tools.core.html_report",
+              "lobster.tools.core.online_report",
+              "lobster.tools.core.online_report_nogit",
+              "lobster.tools.core.report"],
+    package_data={
+        "lobster.tools.core.html_report":["assets/*"]
+    },
+    install_requires=[
+        "Markdown~=3.7",
+        "PyYAML>=6.0",
+    ],
     python_requires=">=3.7, <4",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
@@ -70,6 +69,12 @@ setuptools.setup(
         "Topic :: Software Development",
     ],
     entry_points={
-        "console_scripts": entrypoints
+        "console_scripts": [
+            "lobster-report=lobster.tools.core.report.report:main",
+            "lobster-html-report=lobster.tools.core.html_report.html_report:main",
+            "lobster-online-report=lobster.tools.core.online_report.online_report:main",
+            "lobster-online-report-nogit=lobster.tools.core.online_report_nogit.online_report_nogit:main",
+            "lobster-ci-report=lobster.tools.core.ci_report.ci_report:main"
+        ]
     },
 )
