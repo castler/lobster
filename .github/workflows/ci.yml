@@ -193,7 +193,14 @@ jobs:
           disk-cache: ${{ github.workflow }}
           repository-cache: true
       - uses: actions/checkout@v4
-      - run: bazel test //tests_system/... //tests_unit/...
+      - name: Run bazel tests
+        run: bazel test //tests_system/... //tests_unit/...
+      - name: Upload bazel test logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bazel-testlogs
+          path: ${{ github.workspace }}/bazel-out/*/testlogs/
   failure:
     name: Check all jobs
     needs:
