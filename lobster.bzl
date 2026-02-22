@@ -2,7 +2,7 @@ load("@trlc//:trlc.bzl", "TrlcProviderInfo")
 
 LobsterProvider = provider(
     fields = {
-        "lobster_input": "ABC",
+        "lobster_input": "Some change in the bzl file",
     },
 )
 
